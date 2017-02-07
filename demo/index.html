@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+
+    <title>scalable-image-grid demo</title>
+
+    <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+
+    <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+    <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+    <link rel="import" href="../scalable-image-grid.html">
+
+    <style is="custom-style" include="demo-pages-shared-styles">
+      :root {
+        --scalable-image-grid-max-columns: 4;
+        --scalable-image-grid-gutter: 15;
+        --scalable-image-grid-min-image-width: 250;
+        --scalable-image-grid-image-height: 56;
+        --scalable-image-grid-background-color: auto;
+        --scalable-image-grid-image-style: {
+          box-shadow: 0 12px 15px 0 rgba(0, 0, 0, 0.34);
+        };
+        --demo-snippet: {
+          max-width: 95vw;
+          padding: 0px;
+        };
+      }
+
+    </style>
+  </head>
+  <body>
+    <div >
+      <h3>Basic scalable-image-grid Demo</h3>
+      <demo-snippet>
+        <template>
+          <scalable-image-grid id="imgGrid" ripple></scalable-image-grid>
+          <div><span id="usrClick"></span></div>
+        </template>
+      </demo-snippet>
+    </div>
+    <script type="text/javascript">
+      window.addEventListener('WebComponentsReady', function(e) {
+        console.log("Getting images");
+        var images = [ // Example using an array of objects with one property representing the image path.
+          {source: "test.jpg", order: 12},
+          {source: "test.jpg", order: 2},
+          {source: "test.jpg", order: 3},
+          {source: "test.jpg", order: 4},
+          {source: "test.jpg", order: 5},
+          {source: "test.jpg", order: 6},
+          {source: "test.jpg", order: 7},
+          {source: "test.jpg", order: 8},
+          {source: "test.jpg", order: 9},
+          {source: "test.jpg", order: 10},
+          {source: "test.jpg", order: 11},
+          {source: "test.jpg", order: 1}
+        ];
+        var imgGrid = document.getElementById("imgGrid");
+        imgGrid.loadImageList(images);
+        document.getElementById('imgGrid').addEventListener('scalable-image-selected', function (e) {
+          console.log(e.detail.imageIndex);
+          document.getElementById('usrClick').innerHTML = "Selected Image Index: " + e.detail.imageIndex;
+          setTimeout(function () {
+            document.getElementById('usrClick').innerHTML = "";
+          }, 2000);
+        })
+      })
+    </script>
+  </body>
+</html>
