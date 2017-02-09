@@ -2,7 +2,7 @@
 @license
 
 The MIT License (MIT)
-Copyright (c) 2016 Robert Vogel
+Copyright (c) 2017 Robert Vogel
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 documentation files (the "Software"), to deal in the Software without restriction, including without limitation
@@ -37,16 +37,69 @@ maintained.
 Most aspects of the component are configured by custom CSS variables. (See Styling section below.) However, the CSS
 variables are also exposed as component properties. (See API reference.)
 
+#### Things to Consider: ####
+This component works best with a series of images of that have equal aspect ratios and that all share the same orientation
+(portrait or landscape). All internal layout and scaling calculations are based off of the width of an image. The aspect
+ratio is controlled by specifying the height as a percentage of the width. For example if you have an image with a 4:3
+aspect ratio, then the image height CSS variable / component property would have a value of 75, which is `(height / width * 100)`
+for a landscape oriented image, or a value of 133.3 for a portrait oriented image.
+
 ### Example:
 
-A typical usage scenario would involve configuring and styling the grid defining custom CSS variables then using the
-`loadImageList' method to load the component with an array containing the image URLs. One can then listen for the
+A typical usage scenario would involve configuring and styling the grid by defining custom CSS variables then using the
+`loadImageList` API method to load the component with an array containing the image URLs. One can then listen for the
 `scalable-image-selected` event to handle the user clicking on an image.
 
+```
+<style>
+:root {
+  --scalable-image-grid-max-columns: 4;
+  --scalable-image-grid-gutter: 15;
+  --scalable-image-grid-min-image-width: 250;
+  --scalable-image-grid-image-height: 56;
+  --scalable-image-grid-background-color: auto;
+  --scalable-image-grid-image-style: {
+    box-shadow: 0 12px 15px 0 rgba(0, 0, 0, 0.34);
+  };
+  ...
+}
+</style>
+...
+<body>
+...
+<scalable-image-grid id="imgGrid" ripple></scalable-image-grid>
+...
+  <script>
+    window.addEventListener('WebComponentsReady', function(e) {
+      var images = [
+        {source: "myImage1.jpg", order: 12},
+        {source: "myImage2.jpg", order: 2},
+        {source: "myImage3.jpg", order: 3},
+        {source: "myImage4.jpg", order: 4},
+        {source: "myImage5.jpg", order: 5},
+        {source: "myImage5.jpg", order: 6},
+        {source: "myImage7.jpg", order: 7},
+        {source: "myImage8.jpg", order: 8},
+        {source: "myImage9.jpg", order: 9},
+        {source: "myImage10.jpg", order: 10},
+        {source: "myImage11.jpg", order: 11},
+        {source: "myImage12.jpg", order: 1}
+      ];
+
+      var imgGrid = document.getElementById("imgGrid");
+      imgGrid.loadImageList(images);
+
+      document.getElementById('imgGrid').addEventListener('scalable-image-selected', function (e) {
+        console.log(e.detail.imageIndex); //Respond to selection...
+      })
+    })
+  </script>
+</body>
+```
 
 ### Styling
 
-Provides the following custom CSS properties for stying the `scalable-image-grid` component:
+The following custom CSS properties and mixins are available for stying and control:
 
 Custom property  | Description | Default
 -----------------|-------------|--------
@@ -57,11 +110,8 @@ Custom property  | Description | Default
 `--scalable-image-grid-background-color` | Background color of grid. The gutter color | currentColor
 `--scalable-image-grid-image-style` | A mix-in that can apply styling to each iron-image component. | {}
 
+__Note:__ the numeric custom CSS properties are unitless numbers that are internally converted to the units shown in parenthesis.
 
-TODO - Complete documentation and Readme
-TODO - Make a more interactive demo that has options for modifying container width and provides a set of portrait images
-TODO - Test string array and more banging on it
-TODO - Publish to GitHub and build demo and docs and publish to components libraries.
 @demo demo/index.html 
 -->
 
@@ -165,7 +215,7 @@ TODO - Publish to GitHub and build demo and docs and publish to components libra
       properties: {
         /**
          * If the imageList array is an array of objects, then `sourceProperty` contains the object property name
-         * that contains the image URL. This property is required if the imageList array contains objects and ignored
+         * for the image URL. This property is required if the imageList array contains objects and ignored
          * if the array contains strings. This property defaults to an object property name of `source`
          */
         sourceProperty: {
@@ -174,7 +224,7 @@ TODO - Publish to GitHub and build demo and docs and publish to components libra
         },
         /**
          * If imageList array is an array of objects, then `orderProperty` contains the name of an optional object
-         * property that specifies the display order of the images. This allows the user to display the images
+         * property specifying the display order of the images. This allows the user to display the images
          * in an order that is different from the natural order of the elements of the imageList array. This property
          * defaults to an object property name of `order`.
          */
@@ -200,6 +250,16 @@ TODO - Publish to GitHub and build demo and docs and publish to components libra
           type: Number,
           value: function() { return this._parseCVar('--image-min-width')},
           observer: '_minImageWidthChanged'
+        },
+        /**
+         *  Determines the aspect ratio of the image by fixing the image height as a percentage of the image width.
+         *  The initial value defaults to the `--scalable-image-grid-image-height` custom CSS variable
+         *  and will override the effect of the CSS variable if modified.
+         */
+        imageHeight: {
+          type: Number,
+          value: function() { return this._parseCVar('--image-grid-image-height')},
+          observer: '_imageHeightChanged'
         },
         /**
          *  The maximum number of columns the image grid will display. The initial value defaults to the
@@ -236,7 +296,6 @@ TODO - Publish to GitHub and build demo and docs and publish to components libra
          */
         ripple: {
           type: Boolean,
-          value: false,
           notify: true
         },
         /**
@@ -256,8 +315,7 @@ TODO - Publish to GitHub and build demo and docs and publish to components libra
       /**
        * Loads the component with an array containing the URLs of the images to display in the grid. The array
        * can be an array of strings containing the URL of the image, or it can be an array of objects with a property
-       * that contains the URL of the image. If the array contains objects then the expected `sourceProperty` name is
-       * `source`. If the actual property name within the object is something different then it must be specified.
+       * that contains the URL of the image and an optional numeric property that determines the display order of the images.
        *
        * @param imageList - The array of image 
        */
@@ -265,8 +323,15 @@ TODO - Publish to GitHub and build demo and docs and publish to components libra
         this._imageList = imageList;
       },
       /**
+       *  Manually forces the grid to determine if the number of columns need to be changed. This can be called if
+       *  a parent container is resized in code but the parent container does not implement the iron-resize-behavior.
+       */
+      adjustToCurrentSize: function () {
+        this._setCurrentColumns();
+      },
+      /**
        * Click handler for each image. Pulls the index of the image in the source array by parsing the iron-image's
-       * id value. Fires the `scalable-image-selected` event that contains image index value.
+       * id value. Fires the `scalable-image-selected` event that contains image index value and the image URL.
        *
        * @param e
        * @private
@@ -307,6 +372,9 @@ TODO - Publish to GitHub and build demo and docs and publish to components libra
         }
         return outArr;
       },
+      /**
+       * Helper function that turns ripple on and off by swapping classes based on the value of the ripple property.
+       */
       _rippleClass: function () {
         return this.ripple ? "ripple-show" : "ripple-hide";
       },
@@ -320,6 +388,20 @@ TODO - Publish to GitHub and build demo and docs and publish to components libra
         var curMW = this._parseCVar('--image-min-width');
         if (this.minImageWidth !== curMW) {
           this.customStyle['--image-min-width'] = this.minImageWidth.toString() + 'px';
+          this.updateStyles();
+          this._setCurrentColumns();
+        }
+      },
+      /**
+       * Observer for the imageHeight property. If the property changes, it will update the internal CSS variable
+       * `--image-grid-image-height`.
+       *
+       * @private
+       */
+      _imageHeightChanged: function () {
+        var curMW = this._parseCVar('--image-grid-image-height');
+        if (this.imageHeight !== curMW) {
+          this.customStyle['--image-grid-image-height'] = this.imageHeight.toString() + '%';
           this.updateStyles();
           this._setCurrentColumns();
         }
