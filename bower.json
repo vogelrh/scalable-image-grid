@@ -1,12 +1,12 @@
 {
   "name": "scalable-image-grid",
   "description": "Image grid that maintains columns by resizing images, up to a point before adjusting columns.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "scalable-image-grid.html",
   "dependencies": {
     "polymer": "Polymer/polymer#^1.4.0",
-    "iron-image": "^1.2.5",
-    "iron-resizable-behavior": "^1.0.5",
+    "iron-image": "PolymerElements/iron-image#^1.2.5",
+    "iron-resizable-behavior": "PolymerElements/iron-resizable-behavior#^1.0.5",
     "paper-ripple": "PolymerElements/paper-ripple#^1.0.10"
   },
   "keywords": [
