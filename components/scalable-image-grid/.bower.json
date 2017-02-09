@@ -1,0 +1,45 @@
+{
+  "name": "scalable-image-grid",
+  "description": "Image grid that maintains columns by resizing images, up to a point before adjusting columns.",
+  "main": "scalable-image-grid.html",
+  "dependencies": {
+    "polymer": "Polymer/polymer#^1.4.0",
+    "iron-image": "^1.2.5",
+    "iron-resizable-behavior": "^1.0.5",
+    "paper-ripple": "PolymerElements/paper-ripple#^1.0.10"
+  },
+  "keywords": [
+    "web-components",
+    "polymer",
+    "image",
+    "grid",
+    "iron-image"
+  ],
+  "authors": [
+    "Robert Vogel"
+  ],
+  "license": "The MIT License",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/vogelrh/scalable-image-grid.git"
+  },
+  "devDependencies": {
+    "iron-component-page": "PolymerElements/iron-component-page#^1.0.0",
+    "iron-demo-helpers": "PolymerElements/iron-demo-helpers#^1.0.0",
+    "web-component-tester": "^4.0.0",
+    "webcomponentsjs": "webcomponents/webcomponentsjs#^0.7.0",
+    "paper-radio-group": "^1.2.1",
+    "paper-card": "*"
+  },
+  "homepage": "https://github.com/vogelrh/scalable-image-grid",
+  "_release": "2f6e3fc087",
+  "_resolution": {
+    "type": "branch",
+    "branch": "master",
+    "commit": "2f6e3fc087cb26f76b6b07ec2fc95ab9f148f086"
+  },
+  "_source": "https://github.com/vogelrh/scalable-image-grid.git",
+  "_target": "master",
+  "_originalSource": "vogelrh/scalable-image-grid",
+  "_direct": true
+}

@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+
+    <title>scalable-image-grid demo</title>
+
+    <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+
+    <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+    <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+    <link rel="import" href="../../paper-radio-group/paper-radio-group.html">
+    <link rel="import" href="../../paper-radio-button/paper-radio-button.html">
+    <link rel="import" href="../../paper-card/paper-card.html">
+    <link rel="import" href="../scalable-image-grid.html">
+
+    <style is="custom-style" include="demo-pages-shared-styles">
+      :root {
+        --scalable-image-grid-max-columns: 4;
+        --scalable-image-grid-gutter: 15;
+        --scalable-image-grid-min-image-width: 250;
+        --scalable-image-grid-image-height: 56;
+        --scalable-image-grid-background-color: auto;
+        --scalable-image-grid-image-style: {
+          box-shadow: 0 12px 15px 0 rgba(0, 0, 0, 0.34);
+
+          --paper-card-background-color: lightgray;
+        };
+        
+        --demo-snippet: {
+          max-width: 80vw;
+          padding: 0px;
+        };
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <h3>Basic scalable-image-grid Demo</h3>
+      <div>
+        <i>Resize your Browser's window or use the radio-buttons below to observe the scaling and responsive behavior.</i>
+      </div>
+      <demo-snippet id="demoContainer">
+        <template>
+          <scalable-image-grid id="imgGrid" ripple></scalable-image-grid>
+        </template>
+      </demo-snippet>
+      <paper-card>
+        <div class="card-content">
+        <label id="label1">Grid Size:</label>
+        <paper-radio-group selected="t1" aria-labelledby="label1">
+          <paper-radio-button name="t1" onclick="setSize(1)">Large</paper-radio-button>
+          <paper-radio-button name="t2" onclick="setSize(2)">Medium</paper-radio-button>
+          <paper-radio-button name="t3" onclick="setSize(3)">Small</paper-radio-button>
+        </paper-radio-group>
+        </div>
+      </paper-card>
+      <paper-card>
+        <div class="card-content">
+        <label id="label2">Image Set:</label>
+        <paper-radio-group selected="s1" aria-labelledby="label2">
+          <paper-radio-button name="s1" onclick="swapImageSets(1)">Landscape</paper-radio-button>
+          <paper-radio-button name="s2" onclick="swapImageSets(2)">Portrait</paper-radio-button>
+        </paper-radio-group>
+        </div>
+      </paper-card>
+      <div><span id="usrClick"></span></div>
+    </div>
+    <script type="text/javascript">
+      var imageSet1 = [ // Example using an array of objects.
+        {source: "demoL.jpg", order: 12},
+        {source: "demoL.jpg", order: 2},
+        {source: "demoL.jpg", order: 3},
+        {source: "demoL.jpg", order: 4},
+        {source: "demoL.jpg", order: 5},
+        {source: "demoL.jpg", order: 6},
+        {source: "demoL.jpg", order: 7},
+        {source: "demoL.jpg", order: 8},
+        {source: "demoL.jpg", order: 9},
+        {source: "demoL.jpg", order: 10},
+        {source: "demoL.jpg", order: 11},
+        {source: "demoL.jpg", order: 1}
+      ];
+      var imageSet2 = [ // Example using an array of strings.
+        "demoP.jpg",
+        "demoP.jpg",
+        "demoP.jpg",
+        "demoP.jpg",
+        "demoP.jpg",
+        "demoP.jpg",
+        "demoP.jpg",
+        "demoP.jpg",
+        "demoP.jpg",
+        "demoP.jpg",
+      ];
+      var imgGrid;
+
+      window.addEventListener('WebComponentsReady', function(e) {
+        console.log("Getting images");
+        imgGrid = document.getElementById("imgGrid");
+        imgGrid.loadImageList(imageSet1);
+        document.getElementById('imgGrid').addEventListener('scalable-image-selected', function (e) {
+          console.log(e.detail.imageIndex);
+          document.getElementById('usrClick').innerHTML = "Selected Image Index: " + e.detail.imageIndex;
+          setTimeout(function () {
+            document.getElementById('usrClick').innerHTML = "";
+          }, 2000);
+        });
+      });
+      // Note if a parent container such as demo-snippet does
+      // not implement iron-resize-behavior then we need to
+      // manually force a grid size adjustment by calling the
+      // adjustToCurrentSize method.
+      function setSize (num) {
+        var elem = document.getElementById("demoContainer");
+        var imgGrid = document.getElementById("imgGrid");
+        console.log("SSS: ",num)
+        console.log(elem.style.maxWidth);
+        switch (num) {
+          case 1:
+            elem.style.maxWidth = "80vw";
+            imgGrid.adjustToCurrentSize();
+            break;
+          case 2:
+            elem.style.maxWidth = "50vw";
+            imgGrid.adjustToCurrentSize();
+            break;
+          case 3:
+            elem.style.maxWidth = "25vw";
+            imgGrid.adjustToCurrentSize();
+            break;
+        }
+      }
+      function swapImageSets (set) {
+        if (set ===1) {
+         imgGrid.maxColumns = 4;
+         imgGrid.imageHeight = 56;
+         imgGrid.minImageWidth = 250;
+         imgGrid.gridGutter = 15;
+         imgGrid.loadImageList(imageSet1);
+        }
+        else {
+          imgGrid.maxColumns = 5;
+          imgGrid.imageHeight = 133.3;
+          imgGrid.minImageWidth = 175;
+          imgGrid.gridGutter = 10;
+          imgGrid.loadImageList(imageSet2);
+
+        }
+      }
+    </script>
+  </body>
+</html>

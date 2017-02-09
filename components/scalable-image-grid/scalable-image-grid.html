@@ -1,0 +1,484 @@
+<!--
+@license
+
+The MIT License (MIT)
+Copyright (c) 2017 Robert Vogel
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+-->
+
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../iron-resizable-behavior/iron-resizable-behavior.html">
+<link rel="import" href="../iron-image/iron-image.html">
+<link rel="import" href="../paper-ripple/paper-ripple.html">
+<!--
+`scalable-image-grid`
+A Polymer web component that displays a grid of `iron-images` of equal aspect ratios, scales the images to
+fit the host container while maintaining the specified image aspect ratio. The grid remains responsive by modifying the columns
+to maintain a minimum image width.
+
+The user can specify the number of columns to display, the image aspect ratio, and a minimum image width. The grid will
+try to layout the images within the specified number of columns, scaling the images to fit within the width of the
+columns. However, if the image width would be less than the specified minimum width, then the grid will reduce the
+number of columns so that the image widths remain greater that the minimum width. Once the grid reduces to a single
+column, the images continue to scale however to fit the container. As the image scales, the image aspect ratio is always
+maintained.
+
+Most aspects of the component are configured by custom CSS variables. (See Styling section below.) However, the CSS
+variables are also exposed as component properties. (See API reference.)
+
+#### Things to Consider: ####
+This component works best with a series of images of that have equal aspect ratios and that all share the same orientation
+(portrait or landscape). All internal layout and scaling calculations are based off of the width of an image. The aspect
+ratio is controlled by specifying the height as a percentage of the width. For example if you have an image with a 4:3
+aspect ratio, then the image height CSS variable / component property would have a value of 75, which is `(height / width * 100)`
+for a landscape oriented image, or a value of 133.3 for a portrait oriented image.
+
+### Example:
+
+A typical usage scenario would involve configuring and styling the grid by defining custom CSS variables then using the
+`loadImageList` API method to load the component with an array containing the image URLs. One can then listen for the
+`scalable-image-selected` event to handle the user clicking on an image.
+
+```
+<style>
+:root {
+  --scalable-image-grid-max-columns: 4;
+  --scalable-image-grid-gutter: 15;
+  --scalable-image-grid-min-image-width: 250;
+  --scalable-image-grid-image-height: 56;
+  --scalable-image-grid-background-color: auto;
+  --scalable-image-grid-image-style: {
+    box-shadow: 0 12px 15px 0 rgba(0, 0, 0, 0.34);
+  };
+  ...
+}
+</style>
+...
+<body>
+...
+<scalable-image-grid id="imgGrid" ripple></scalable-image-grid>
+...
+  <script>
+    window.addEventListener('WebComponentsReady', function(e) {
+      var images = [
+        {source: "myImage1.jpg", order: 12},
+        {source: "myImage2.jpg", order: 2},
+        {source: "myImage3.jpg", order: 3},
+        {source: "myImage4.jpg", order: 4},
+        {source: "myImage5.jpg", order: 5},
+        {source: "myImage5.jpg", order: 6},
+        {source: "myImage7.jpg", order: 7},
+        {source: "myImage8.jpg", order: 8},
+        {source: "myImage9.jpg", order: 9},
+        {source: "myImage10.jpg", order: 10},
+        {source: "myImage11.jpg", order: 11},
+        {source: "myImage12.jpg", order: 1}
+      ];
+
+      var imgGrid = document.getElementById("imgGrid");
+      imgGrid.loadImageList(images);
+
+      document.getElementById('imgGrid').addEventListener('scalable-image-selected', function (e) {
+        console.log(e.detail.imageIndex); //Respond to selection...
+      })
+    })
+  </script>
+</body>
+```
+
+### Styling
+
+The following custom CSS properties and mixins are available for stying and control:
+
+Custom property  | Description | Default
+-----------------|-------------|--------
+`--scalable-image-grid-max-columns` | Maximum number of columns of images | 3
+`--scalable-image-grid-min-image-width` | The minimum width  an image will be scaled to before adjusting the number of grid columns. | 100 (px)
+`--scalable-image-grid-gutter` | The number of pixels between the images in the grid. | 1 (px)
+`--scalable-image-grid-image-height` | Maintains image aspect ratio by specifying image height as a percentage of width. The default value represents a 4:3 aspect ratio. | 75 (%)
+`--scalable-image-grid-background-color` | Background color of grid. The gutter color | currentColor
+`--scalable-image-grid-image-style` | A mix-in that can apply styling to each iron-image component. | {}
+
+__Note:__ the numeric custom CSS properties are unitless numbers that are internally converted to the units shown in parenthesis.
+
+@demo demo/index.html 
+-->
+
+<dom-module id="scalable-image-grid">
+  <template>
+    <style>
+      :host {
+        --iron-image-placeholder: {
+          background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEwAACxMBAJqcGAAAB95JREFUeJzt3V2IG9cVB/Bzz1i7luMo2O5D69BPCE3y0DQYiknTQJy0JV2ndgl12kIDW5LKXzNa2SgiL3UFoVR1FWmu1uvIkFL6kBQTQxInuJDENindONAkJVBqWkgKpeCWetMQG0u7q3P6UG2YDF6tpR3NHeme39scaWeOpb9m5sgaCUAIIYQQQgghhBBCCCGEEKNMmW7A9/3bmTmLiNsA4LMAMGa6p14ws5fL5eqm++iXsQBUKpV0KpXSAPCwqR6iQERtRNzhed5Lpnvph5EAdJ783wHAXSa2HzUiusTMX8vn838y3Uuv0MRGO6/8kXjyAQAQcb3jOC9WKpUbTffSq9j3AJ1j/puIGNz2X5i5OD8/f7pQKFyOu6deaK25y81vI+Jd+/fvvxRbQ6u0xsA2fxx88onoPDPfkc/n/2ugl6jd3m63nzl+/PjOXbt2tU03cy1iPwQw87bgsuM4hWF+8pl5OrislNp+4cKFqql+ehV7ABDxc8HlZrN5Ju4eojQ3N5cnolOhsuv7vmukoR6ZOAn82Jyf9GP+Skql0mKr1XoQAN4J1pm5qrWeMNTWNTMyBYyaYrH4oeM424nowlINER0i+m21Wv2yyd5WIgGIyL59+/7hOM79AHBlqTYM46EEIEKu6/4RAH5ARMFR8cZUKnVyenp6vam+upEARMzzvOcQsRAqL42HjpGmupAADIDruk8QUSNYS+p4KAEYAKUUp9Npl5lfDt2UuPFQAjAg2Wx2Ye3atd9l5j8H60kbDyUAA5TNZj8gou1E9O+lWtLGQwnAgOXz+b8z87eJqLlUS9J4KAGIQT6ff0Mp9cNQORHjoQQgJrlc7lkAeCxUNj4eSgBi5LpuGQB+FayZHg8lADFSSvHFixf3AED4f0CNjYcSgJiVSqX5NWvWPEBE54N1U+OhBMCAvXv3vk9EEwDwn6WaqfFQAtAjIloILpfL5ev7Wc+BAwfeZeYdANBaqpkYDyUAvXsvuJBOp7/e74pyudwsAEyGyrGOhxKA3oVP4H5eqVQ29rsyz/OeAYCfhMqxjYcSgB45jnMsVLoplUqd01rv7PdV67ru48z8m2AtrvEw9usCwp+r9zzP+PWJvdJaPwUAP4pjW4N+fGQP0IdWq+UBwKzpPqIgAehDoVC43Gq1vsHMT5nuZbUkAH0qFAqXc7ncw0qpLZ1P//wtPCIOAxOXho0U13XfAoDdUa1vhWsPIyd7AMtJACwnAbCcBMByEgDLSQAsJwGwnATAchIAy0kALCcBsJwEwHISAMtJACwnAbCcBMByEgDLSQAsJwGwnATAchIAy0kALCcBsFzirwuI+3Pyg5a0ayFlD2A5CYDlJACWS/w5QFjSjqErSfo5jOwBLCcBsJwEwHJDdw5wLXzfv5WZfwEAdyMiA8BpAHjU87zzK/ypdUZuD+D7/q1KqdcRcQIR1wHAdQBwPxGd01rfbLq/pBm5AHRe+ZlwHRFvYOaygZYSbeQCAAB3L3dD+IerxQgGoHPMF9do5AIA/z/huyql1CtxNjIMRjEAjxLRB+EiEb2PiEUTDSXZyAXA87zziLiVmV8goktEdImZn3McZ6vrun813V/SjOT7AJ15f0dU66vVavcg4k8XFha+d/DgwX9Gtd4kGLk9QNS01t8HgFMAcGcqlZqtVqu3mO4pShKALrTWBwHgaURMdUqfUUr9oVar3WmyryhJAK7i0KFD6Pv+EwDwy/BtiLgBAF6u1Wrfib+z6EkAQnzfH9+4cePTSqn8cvdBxLUAcEJrvTfG1gZCAhDQaDRuUEqdUko9uNJ9EVEBwBGt9c+Yeag+pBIkAeio1+ubW63Wa9DlreRlPKa1/nWj0UitfNfkkQAAQLVavYWZXweAL/Xz90qph5rN5sl+f0LOpJF7H8D3/XEAqANAa25uLl8qlRa73V9r/VUiOgkAG1azXaXUN9Pp9JlarTYxNTX1r9WsK04jtQeo1+ublVJnlVKPKKX2b9q06flur0qt9U4ieqVzZh+FLYg4W6vVbopofQM3MgHwff+Odrv9JgBsDZS/NT4+/vsjR458Onz/er2+GwBOdM7oo/QFRJzVWn8l4vUOxEgEQGudZeaziPjJ8G2IeFu73X7D9/0tAADMrLTWjzPzURjcv/8TRHTGxI9B92qozwECx/tHELs+l59i5tfq9fpDWusJpVT451ojh4jriOj5FfoybmgDUK/XNzPzCfj4Ln9ZiLiOmZ9VKr6RHREH/tOvq5XseC5jmeO96MPQBaDb8V70bhgPAU8m/bg6TOSRtJwEwHISAMtJACwnAbCcBMByEgDLJf59gGH7TqBhI3sAy0kALCcBsJyJAMwHFw4fPnydgR4SaXp6en2oNH/VO0Yo9gAQ0bvB5bGxsXvj7iGp2u32PcHl8GM1CLEHQCl1OrRcnpmZiepDmUNrZmZmQ+f7jT4SfqwGIfYxkJkbzLync2UNAMAX5+fnz2mti1euXHm1WCx+GHdPJpXL5evHx8fvXVxcLCPiR58mJiJGxGOD3r6RGdv3/aNKqd0mtj0smPnJXC63Z9DbMTIFZDKZPDOfNbHtYcDMZzOZzLIXp0bJSAAmJyebmUzmPiJqEJF8q1dH57E4mslk7pucnGzGsU3jb7NqrW8DgCwAbAOAzwPAmNmOYtciovcQ8VUiOjY1NfWO6YaEEEIIIYQQQggxmv4H55a4LUZyRYwAAAAASUVORK5CYII=");
+        };
+        --max-columns: var(--scalable-image-grid-max-columns, 3);
+        --image-grid-columns: var(--max-columns);
+        --image-min-width: calc(1px * var(--scalable-image-grid-min-image-width, 100));
+        --image-grid-gutter: calc(1px * var(--scalable-image-grid-gutter, 1));
+        --image-grid-image-height: calc(1% * var(--scalable-image-grid-image-height, 75));
+        --image-width: calc((100% - 0.1px) / var(--image-grid-columns)  - var(--image-grid-gutter)) !important;
+        --iron-image-width: var(--image-width);
+        --iron-image-height: var(--image-grid-image-height);
+        --image-grid-background-color: var(--scalable-image-grid-background-color, currentColor);
+      }
+      .image-grid {
+        display: -ms-flexbox;
+        display: -webkit-flex;
+        display: flex;
+        -ms-flex-direction: row;
+        -webkit-flex-direction: row;
+        flex-direction: row;
+        -ms-flex-wrap: wrap;
+        -webkit-flex-wrap: wrap;
+        flex-wrap: wrap;
+        padding-top: var(--image-grid-gutter);
+        padding-left: var(--image-grid-gutter);
+        box-sizing: border-box;
+        background-color: var(--image-grid-background-color);
+      }
+      .image-grid > * {
+        /* Required for IE 10 */
+        -ms-flex: 1 1 100%;
+        -webkit-flex: 1;
+        flex: 1;
+        /* The width for an item is: (100% - subPixelAdjustment - gutter * columns) / columns */
+        -webkit-flex-basis: var(--image-width);
+        flex-basis: var(--image-width);
+        max-width:  var(--image-width);
+        margin-bottom: var(--image-grid-gutter);
+        margin-right: var(--image-grid-gutter);
+        height: var(--image-grid-image-height);
+        box-sizing: border-box;
+      }
+      .image-grid > * {
+        position: relative;
+      }
+      .image-grid > *::before {
+        display: block;
+        content: "";
+        padding-top: var(--image-grid-image-height);
+      }
+      .image-grid > * > * {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+      }
+      .image {
+        @apply(--scalable-image-grid-image-style)
+      }
+      .ripple-show {
+        display: block;
+      }
+      .ripple-hide {
+        display: none
+      }
+    </style>
+    <div class="image-grid" id="igrid">
+      <template is="dom-repeat" items="[[_getSources(sourceProperty, orderProperty, _imageList)]]">
+        <div style="position: relative; order: [[item.order]]">
+        <iron-image class="image"
+            id="img_[[index]]"
+            src="[[item.src]]"
+            sizing="[[sizing]]"
+            preload
+            fade
+            on-tap="_imageClicked"></iron-image>
+          <!--<template>-->
+          <paper-ripple recenters class="{{_rippleClass()}}">
+            <div id="background" class="style-scope paper-ripple" style="opacity: 0.000428;"></div>
+            <div id="waves" class="style-scope paper-ripple"></div>
+          </paper-ripple>
+          <!--</template>-->
+        </div>
+      </template>
+    </div>
+  </template>
+
+  <script>
+    Polymer({
+
+      is: 'scalable-image-grid',
+
+      properties: {
+        /**
+         * If the imageList array is an array of objects, then `sourceProperty` contains the object property name
+         * for the image URL. This property is required if the imageList array contains objects and ignored
+         * if the array contains strings. This property defaults to an object property name of `source`
+         */
+        sourceProperty: {
+          type: String,
+          value: 'source'
+        },
+        /**
+         * If imageList array is an array of objects, then `orderProperty` contains the name of an optional object
+         * property specifying the display order of the images. This allows the user to display the images
+         * in an order that is different from the natural order of the elements of the imageList array. This property
+         * defaults to an object property name of `order`.
+         */
+        orderProperty: {
+          type: String,
+          value: 'order'
+        },
+        /**
+         * Sets a sizing option for the underlying iron-image.  Valid values are `contain` (full aspect ratio of the
+         * image is contained within the element and letterboxed) or `cover` (image is cropped in order to fully cover
+         * the bounds of the element). Default value is `contain`.
+         */
+        sizing: {
+          type: String,
+          value: "contain"
+        },
+        /**
+         *  Minimum width in pixels that the image will scale down to before causing the grid to decrease the number
+         *  of columns. The initial value defaults to the `--scalable-image-grid-image-min-width` custom CSS variable
+         *  and will override the effect of the CSS variable if modified.
+         */
+        minImageWidth: {
+          type: Number,
+          value: function() { return this._parseCVar('--image-min-width')},
+          observer: '_minImageWidthChanged'
+        },
+        /**
+         *  Determines the aspect ratio of the image by fixing the image height as a percentage of the image width.
+         *  The initial value defaults to the `--scalable-image-grid-image-height` custom CSS variable
+         *  and will override the effect of the CSS variable if modified.
+         */
+        imageHeight: {
+          type: Number,
+          value: function() { return this._parseCVar('--image-grid-image-height')},
+          observer: '_imageHeightChanged'
+        },
+        /**
+         *  The maximum number of columns the image grid will display. The initial value defaults to the
+         *  `--scalable-image-grid-max-columns` custom CSS variable and will override the effect of the CSS variable if
+         *  modified.
+         */
+        maxColumns: {
+          type: Number,
+          value: function() { return this._parseCVar('--max-columns')},
+          observer: '_maxColumnsChanged'
+        },
+        /**
+         *  The width of the gutter separating images in the grid. The initial value defaults to the
+         *  `--scalable-image-grid-gutter` custom CSS variable and will override the effect of the CSS variable if
+         *  modified. _NOTE: the grid tries to honor this value as best it can. However, because of nature of the
+         *  calculations, the gutter between images in a row might not be exact_
+         */
+        gridGutter: {
+          type: Number,
+          value: function() { return this._parseCVar('--image-grid-gutter')},
+          observer: '_gridGutterChanged'
+        },
+        /**
+         * The index in the imageList array of the most recently selected image. The value always represents the index
+         * of the image in the imageList array irregardless of the order in which the images are displayed in the grid.
+         */
+        selectedImage: {
+          type: Number,
+          readOnly: true
+        },
+        /**
+         * Controls the display of the ripple effect on image when the user clicks or taps an image in the grid. If the
+         * attribute is specified then the ripple effect will be displayed.
+         */
+        ripple: {
+          type: Boolean,
+          notify: true
+        },
+        /**
+         * A private property that exposes the array containing the image sources. This property should be populated
+         * via the loadImages API method.
+         */
+        _imageList: {
+          type: Array,
+          value: function() {return [];},
+          notify: true
+        }
+      },
+      behaviors: [Polymer.IronResizableBehavior],
+      listeners: {
+        'iron-resize': '_onIronResize'
+      },
+      /**
+       * Loads the component with an array containing the URLs of the images to display in the grid. The array
+       * can be an array of strings containing the URL of the image, or it can be an array of objects with a property
+       * that contains the URL of the image and an optional numeric property that determines the display order of the images.
+       *
+       * @param imageList - The array of image 
+       */
+      loadImageList: function (imageList) {
+        this._imageList = imageList;
+      },
+      /**
+       *  Manually forces the grid to determine if the number of columns need to be changed. This can be called if
+       *  a parent container is resized in code but the parent container does not implement the iron-resize-behavior.
+       */
+      adjustToCurrentSize: function () {
+        this._setCurrentColumns();
+      },
+      /**
+       * Click handler for each image. Pulls the index of the image in the source array by parsing the iron-image's
+       * id value. Fires the `scalable-image-selected` event that contains image index value and the image URL.
+       *
+       * @param e
+       * @private
+       */
+      _imageClicked: function (e) {
+        var ix =  e.target.parentElement.id.split('_')[1];
+        this._setSelectedImage(ix);
+        this.fire('scalable-image-selected', {imageIndex: ix});
+      },
+      /**
+       * Function called by `dom-repeat` that translates the imageList array into an array of objects
+       * containing a source and order property.
+       *
+       * @param srcProp - object source property name
+       * @param ordProp - object order property name
+       * @param arr - the image list array
+       * @returns Array of objects with image order and source properties
+       * @private
+       */
+      _getSources: function (srcProp, ordProp, arr) {
+        var ix = 0; //array index if order property not provided
+        var outArr = [];
+
+        if (arr && arr.length) {
+          var isObject = typeof arr[0] === 'object';
+          if (isObject) {
+            outArr = arr.map(function (obj) {
+              var ord = obj.hasOwnProperty(ordProp) ? obj[ordProp] : ix++;
+              var src = obj.hasOwnProperty(srcProp) ? obj[srcProp] : "";
+              return {src: src, order: ord};
+            });
+          }
+          else {
+            outArr = arr.map(function (str) {
+              return {src: str, order: ix++};
+            });
+          }
+        }
+        return outArr;
+      },
+      /**
+       * Helper function that turns ripple on and off by swapping classes based on the value of the ripple property.
+       */
+      _rippleClass: function () {
+        return this.ripple ? "ripple-show" : "ripple-hide";
+      },
+      /**
+       * Observer for the minImageWidth property. If the property changes, it will update the internal CSS variable
+       * `--image-min-width`.
+       *
+       * @private
+       */
+      _minImageWidthChanged: function () {
+        var curMW = this._parseCVar('--image-min-width');
+        if (this.minImageWidth !== curMW) {
+          this.customStyle['--image-min-width'] = this.minImageWidth.toString() + 'px';
+          this.updateStyles();
+          this._setCurrentColumns();
+        }
+      },
+      /**
+       * Observer for the imageHeight property. If the property changes, it will update the internal CSS variable
+       * `--image-grid-image-height`.
+       *
+       * @private
+       */
+      _imageHeightChanged: function () {
+        var curMW = this._parseCVar('--image-grid-image-height');
+        if (this.imageHeight !== curMW) {
+          this.customStyle['--image-grid-image-height'] = this.imageHeight.toString() + '%';
+          this.updateStyles();
+          this._setCurrentColumns();
+        }
+      },
+      /**
+       * Observer for the gridGutter property. If the property changes, it will update the internal CSS variable
+       * `--image-grid-gutter`.
+       *
+       * @private
+       */
+      _gridGutterChanged: function () {
+        var curMW = this._parseCVar('--image-grid-gutter');
+        if (this.gridGutter !== curMW) {
+          this.customStyle['--image-grid-gutter'] = this.gridGutter.toString() + 'px';
+          this.updateStyles();
+          this._setCurrentColumns();
+        }
+      },
+      /**
+       * Observer for the maxColumns property. If the property changes, it will update the internal CSS variable
+       * `--max-columns`.
+       *
+       * @private
+       */
+      _maxColumnsChanged: function () {
+        var curCols = this._parseCVar('--max-columns');
+        if (this.maxColumns !== curCols) {
+          this.customStyle['--max-columns'] = this.maxColumns.toString();
+          this.updateStyles();
+          this._setCurrentColumns();
+        }
+      },
+      /**
+       * Used to parse the numeric value from a custom CSS variable stripping off any units. It can also handle
+       * the case were the variable is defined as a calculation to convert a unitless number to a number with units.
+       * For example:  a CSS variable defined as "calc(1% * 25.6)" would return the numeric value 25.6.
+       *
+       * @varName - CSS custom variable name
+       * @private
+       */
+      _parseCVar: function(varName) {
+        var s = this.getComputedStyleValue(varName);
+        return s ? parseFloat(s.replace(/[^\d.]|1px|1%/g, '')) : 0;
+      },
+      /**
+       * Based on current container width and other custom CSS variables, determines if the number of columns needs to
+       * be adjusted. Will vary the grid columns between 1 and the maximum number of columns specified.
+       *
+       * @private
+       */
+      _setCurrentColumns: function () {
+        if (this.$.igrid && this.$.igrid.offsetWidth > 0) {
+          var curCols = this._parseCVar('--image-grid-columns');
+          var g = this._parseCVar('--image-grid-gutter');
+          var newCols = parseInt(this.$.igrid.offsetWidth / (g + this.minImageWidth));
+          newCols = newCols < 1 ? 1 : newCols > this.maxColumns ? this.maxColumns : newCols;
+
+          if (curCols !== newCols) {
+            this.customStyle['--image-grid-columns'] = newCols.toString();
+            this.updateStyles();
+          }
+        }
+      },
+      /**
+       * Resize event handler. Calls the `_setCurrentColumns` function.
+       * @private
+       */
+      _onIronResize: function() {
+        this._setCurrentColumns();
+      }
+    });
+    /**
+     * Fired when the user selects an image in the grid.
+     *
+     * @event scalable-image-selected
+     * @param {object} detail The `imageIndex` property of the returned object contains the index of the selected image
+     * as it appears in the image source array.
+     */
+  </script>
+</dom-module>
