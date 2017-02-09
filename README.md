@@ -1,7 +1,7 @@
 [![Published on webcomponents.org](https://img.shields.io/badge/webcomponents.org-published-blue.svg)](https://beta.webcomponents.org/element/vogelrh/ken-burns-image)
 # \<scalable-image-grid\>
 
-A Polymer web component that will display a grid of `iron-images` of equal aspect ratios and will scale the images to
+A Polymer web component that displays a grid of `iron-images` of equal aspect ratios, scales the images to
 fit the host container while maintaining the specified image aspect ratio. The grid remains responsive by modifying the columns
 to maintain a minimum image width.
 
